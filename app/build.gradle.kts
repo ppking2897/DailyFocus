@@ -1,7 +1,20 @@
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
+    // Make sure that you have the Google services Gradle plugin 4.4.1+ dependency
+    id("com.google.gms.google-services") version "4.4.2" apply false
+
+    // Add the dependency for the Crashlytics Gradle plugin
+    id("com.google.firebase.crashlytics") version "3.0.3" apply false
+    kotlin("kapt")
+}
+
+hilt {
+    enableAggregatingTask = false
 }
 
 android {
@@ -62,9 +75,13 @@ dependencies {
     androidTestImplementation (libs.androidx.navigation.testing)
 
     implementation(libs.hilt.android)
+    kapt(libs.hilt.android.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
     androidTestImplementation(libs.hilt.android.testing)
     testImplementation(libs.hilt.android.testing)
+    kaptTest(libs.hilt.android.compiler)
+    kaptAndroidTest(libs.hilt.android.compiler)
+
 
 
     implementation(libs.kotlinx.coroutines.core)
@@ -78,7 +95,6 @@ dependencies {
     //    implementation 'androidx.lifecycle:lifecycle-extensions'
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.livedata.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx.v262)
     // Saved state module for ViewModel
     implementation(libs.androidx.lifecycle.viewmodel.savedstate)
     // alternately - if using Java8, use the following instead of lifecycle-compiler
@@ -105,11 +121,9 @@ dependencies {
 
 
     implementation(libs.androidx.room.runtime)
-    annotationProcessor(libs.androidx.room.compiler)
+    kapt(libs.androidx.room.compiler)
     // optional - Paging 3 Integration
     implementation(libs.androidx.room.paging)
-    // optional - Kotlin Extensions and Coroutines support for Room
-    implementation( libs.androidx.room.ktx)
     // optional - Kotlin Extensions and Coroutines support for Room
     implementation(libs.androidx.room.ktx)
 
@@ -119,4 +133,6 @@ dependencies {
     implementation(libs.firebase.messaging)
 
     implementation(libs.androidx.material.icons.extended)
+
+    implementation("androidx.compose.ui:ui-text-google-fonts:1.8.1")
 }
