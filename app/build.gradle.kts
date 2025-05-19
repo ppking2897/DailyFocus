@@ -135,4 +135,8 @@ dependencies {
     implementation(libs.androidx.material.icons.extended)
 
     implementation("androidx.compose.ui:ui-text-google-fonts:1.8.1")
+
+    implementation("io.coil-kt:coil-compose:2.4.0")
+    implementation("io.coil-kt:coil-gif:2.4.0")
+
 }

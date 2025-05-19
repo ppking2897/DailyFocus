@@ -1,88 +1,108 @@
 package com.bianca.clock.ui
 
+import android.media.MediaPlayer
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.bianca.clock.R
+import com.bianca.clock.infrastructure.room.TaskEntity
+import com.bianca.clock.ui.normal.TimerButton
 import com.bianca.clock.viewModel.FocusTimerViewModel
 
-@ExperimentalMaterial3Api
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(viewModel: FocusTimerViewModel = hiltViewModel()) {
-
     val time by viewModel.timeLeft.collectAsState()
     val isRunning by viewModel.isRunning.collectAsState()
-
     val formattedTime = String.format("%02d:%02d", time / 60, time % 60)
-
     var showDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
-    val tasks by viewModel.tasks.collectAsState()
+    LaunchedEffect(Unit) {
+        viewModel.playSoundEvent.collect {
+            Log.d("HomeScreen", "Play sound event triggered")
+            val player = MediaPlayer.create(context, R.raw.notification_over)
+            player.setOnCompletionListener { it.release() }
+            player.start()
+        }
+    }
 
     AddTaskDialog(
         showDialog = showDialog,
         onDismiss = { showDialog = false },
         onConfirm = { name, tag ->
+            Log.d("HomeScreen", "AddTaskDialog confirmed: name=$name, tag=$tag")
             viewModel.addTask(name, tag)
         }
     )
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text("FocusFlow") },
+                title = { Text("FocusFlow", color = MaterialTheme.colorScheme.onBackground) },
                 actions = {
-                    IconButton(onClick = { showDialog = true }) {
-                        Icon(Icons.Default.Add, contentDescription = "新增任務")
+                    IconButton(onClick = {
+                        Log.d("HomeScreen", "Add task button clicked")
+                        showDialog = true
+                    }) {
+                        Icon(Icons.Default.Add, contentDescription = "新增任務", tint = MaterialTheme.colorScheme.onBackground)
                     }
                 }
             )
@@ -91,54 +111,115 @@ fun HomeScreen(viewModel: FocusTimerViewModel = hiltViewModel()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF0F8FF)) // 淡藍動漫風
-                .padding(start = 24.dp, end = 24.dp, top = innerPadding.calculateTopPadding()-25.dp)
+                .background(MaterialTheme.colorScheme.background)
+                .padding(
+                    start = 24.dp,
+                    end = 24.dp,
+                    top = innerPadding.calculateTopPadding() - 25.dp
+                )
                 .statusBarsPadding(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
             TimerDisplay(time = formattedTime)
-
             Spacer(modifier = Modifier.height(10.dp))
-
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 10.dp, end = 10.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Button(onClick = { viewModel.startTimer() }, enabled = !isRunning) {
-                    Text("開始")
-                }
-                Button(onClick = { viewModel.pauseTimer() }, enabled = isRunning) {
-                    Text("暫停")
-                }
-                Button(onClick = { viewModel.resetTimer() }) {
-                    Text("重設")
-                }
+                TimerButton(
+                    modifier = Modifier.weight(1f),
+                    label = "開始",
+                    onClick = {
+                        Log.d("HomeScreen", "Timer start")
+                        viewModel.startTimer()
+                    },
+                    enabled = !isRunning,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    textColor = Color.White
+                )
+                TimerButton(
+                    modifier = Modifier.weight(1f),
+                    label = "暫停",
+                    onClick = {
+                        Log.d("HomeScreen", "Timer paused")
+                        viewModel.pauseTimer()
+                    },
+                    enabled = isRunning,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    textColor = Color.White
+                )
+                TimerButton(
+                    modifier = Modifier.weight(1f),
+                    label = "重設",
+                    onClick = {
+                        Log.d("HomeScreen", "Timer reset")
+                        viewModel.resetTimer()
+                    },
+                    enabled = true,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    textColor = Color.White
+                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
+//            QuoteBanner(quote = "保持微笑，專注就會自然發生。")
+//            Spacer(modifier = Modifier.height(16.dp))
 
-            QuoteBanner(quote = "保持微笑，專注就會自然發生。")
+            val tasks by viewModel.uiTasks.collectAsState()
+            Log.d("HomeScreen", "Total tasks: ${'$'}{tasks.size}")
+            val (incomplete, complete) = remember(tasks) { tasks.partition { !it.isDone } }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            val listState = rememberLazyListState()
 
             LazyColumn(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.fillMaxSize(),
+                state = listState,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(horizontal = 0.dp, vertical = 16.dp)
             ) {
-                items(tasks) { task ->
-                    TaskItemRow(
-                        task = task,
-                        onCheckedChange = { viewModel.toggleTask(task) },
-                        onDeleteClick = { viewModel.deleteTask(task) }
+
+                item {
+                    Text(
+                        text = "代辦事項",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)
                     )
+                }
+                items(incomplete, key = { it.id }) { task ->
+                    Log.d("HomeScreen", "Render incomplete task: ${'$'}{task.id}, isDone=${'$'}{task.isDone}")
+                    Box(Modifier.animateItem().animateContentSize()) {
+                        TaskItemRow(task, viewModel){
+
+                        }
+                    }
+                }
+                if (complete.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = "已完成",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)
+                        )
+                    }
+                    items(complete, key = { it.id }) { task ->
+                        Log.d("HomeScreen", "Render completed task: ${'$'}{task.id}, isDone=${'$'}{task.isDone}")
+                        Box(Modifier.animateItem().animateContentSize()) {
+                            TaskItemRow(task, viewModel){
+
+                            }
+                        }
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
-
             Image(
                 painter = painterResource(id = R.drawable.ic_flower_smile),
                 contentDescription = "可愛花朵",
@@ -148,50 +229,78 @@ fun HomeScreen(viewModel: FocusTimerViewModel = hiltViewModel()) {
     }
 
     val quote by viewModel.quoteToShow.collectAsState()
+    if (quote != null) {
+        Log.d("HomeScreen", "Quote shown: ${'$'}quote")
+        FlowerQuoteBubble(
+            quote = quote!!,
+            imageRes = R.drawable.ic_flower_smile,
+            onDismiss = { viewModel.clearQuote() }
+        )
+    }
+}
 
-    val infiniteTransition = rememberInfiniteTransition(label = "quote-bg")
-    val animatedOffset by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1000f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 3000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ), label = "gradientOffset"
-    )
-
-    val animatedBrush = Brush.linearGradient(
-        colors = listOf(Color(0xFFFFE0B2), Color(0xFFB3E5FC), Color(0xFFD1C4E9)),
-        start = Offset(0f, animatedOffset),
-        end = Offset(animatedOffset, 0f)
-    )
-
-    AnimatedVisibility(
-        visible = quote != null,
-        enter = fadeIn(animationSpec = tween(500)) +
-                scaleIn(initialScale = 0.8f, animationSpec = tween(500)),
-        exit = fadeOut(animationSpec = tween(400)) +
-                scaleOut(targetScale = 0.8f, animationSpec = tween(400))
+@Composable
+fun TaskItemRow(task: TaskEntity, viewModel: FocusTimerViewModel , checkBoxAction:() -> Unit) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        tonalElevation = 2.dp,
+        shadowElevation = 2.dp,
+        color = MaterialTheme.colorScheme.surface
     ) {
-        Box(
+        Row(
             modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.5f))
-                .clickable { viewModel.clearQuote() },
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .animateContentSize()
+                .padding(horizontal = 5.dp , vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .background(animatedBrush, shape = RoundedCornerShape(16.dp))
-                    .padding(24.dp)
-            ) {
-                Text(
-                    modifier = Modifier.align(Alignment.Center),
-                    text = quote ?: "",
-                    fontSize = 18.sp,
-                    lineHeight = 24.sp,
-                    color = Color.Black
+
+            Checkbox(
+                checked = task.isDone,
+                onCheckedChange = {
+                    Log.d("TaskItem", "Toggle task: ${'$'}{task.id} -> ${'$'}{!task.isDone}")
+                    viewModel.toggleTask(task)
+                    checkBoxAction()
+                },
+                colors = CheckboxDefaults.colors(
+                    checkedColor = MaterialTheme.colorScheme.primary
                 )
+            )
+
+            Column {
+                Text(
+                    text = task.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textDecoration = if (task.isDone) TextDecoration.LineThrough else null
+                )
+                if (task.tag.isNotEmpty()) {
+                    Text(
+                        text = "#${task.tag}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Spacer(modifier = Modifier.weight(1f))
+                IconButton(onClick = {
+                    Log.d("TaskItem", "Delete task: ${'$'}{task.id}")
+                    viewModel.deleteTask(task)
+                }) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "刪除任務",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         }
     }
 }
+
+
+

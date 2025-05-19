@@ -8,29 +8,16 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-
-/**
- * 名稱	用法
- * _tasks	可變的任務資料狀態（私有）
- * tasks	公開給 UI 用的唯讀版本
- * nextTaskId	用來確保每個任務的 ID 唯一
- * addTask()	加入新任務，支援分類與每日重複設定
- * toggleTask()	點擊 Checkbox 時切換 isDone 狀態
- */
 
 @HiltViewModel
 class FocusTimerViewModel @Inject constructor(private val repository: ITaskRepository) :
     ViewModel() {
 
+    private var _timeDefault = (1 * 2) // 2 秒，測試用
 
-    private var _timeDefault = (1 * 2) // 25 分鐘 in 秒
-
-    private val _timeLeft = MutableStateFlow(_timeDefault) // 25 分鐘 in 秒
+    private val _timeLeft = MutableStateFlow(_timeDefault)
     val timeLeft: StateFlow<Int> = _timeLeft
 
     private var timerJob: Job? = null
@@ -38,11 +25,6 @@ class FocusTimerViewModel @Inject constructor(private val repository: ITaskRepos
     val isRunning = MutableStateFlow(false)
 
     private val quotes = listOf(
-//        "你剛才的專注，是對時間最深的尊重。",
-//        "心有方向，時間才有重量。",
-//        "專注，不是做很多事，而是不做其他事。",
-//        "完成，是因為你選擇了它，而不是剛好有空。",
-//        "讓每一段番茄，帶你靠近目標一點點。",
         "你已經完成一段工作了\n但是還很多工作等著你。",
     )
 
@@ -69,6 +51,7 @@ class FocusTimerViewModel @Inject constructor(private val repository: ITaskRepos
             }
             isRunning.value = false
             showRandomQuote()
+            triggerSound()
         }
     }
 
@@ -79,16 +62,22 @@ class FocusTimerViewModel @Inject constructor(private val repository: ITaskRepos
 
     fun resetTimer() {
         timerJob?.cancel()
-        _timeLeft.value = 25 * 60
+        _timeLeft.value = _timeDefault
         isRunning.value = false
     }
 
+    // 🔄 UI 專用任務資料：強制每次更新都給新實例，確保動畫觸發
+    private val _uiTasks = MutableStateFlow<List<TaskEntity>>(emptyList())
+    val uiTasks: StateFlow<List<TaskEntity>> = _uiTasks
 
-    // ✅ 任務資料接收：直接觀察 Flow
-    val tasks: StateFlow<List<TaskEntity>> = repository.getAllTasks()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    init {
+        viewModelScope.launch {
+            repository.getAllTasks().collect { dbTasks ->
+                _uiTasks.value = dbTasks // ✅ 提供新 list 實體以觸發動畫
+            }
+        }
+    }
 
-    // ✅ 加入任務
     fun addTask(name: String, tag: String = "未分類", repeatDaily: Boolean = false) {
         viewModelScope.launch {
             val newTask = TaskEntity(name = name, tag = tag, repeatDaily = repeatDaily)
@@ -96,18 +85,26 @@ class FocusTimerViewModel @Inject constructor(private val repository: ITaskRepos
         }
     }
 
-    // ✅ 勾選任務切換
     fun toggleTask(task: TaskEntity) {
         viewModelScope.launch {
-            val updated = task.copy(isDone = !task.isDone)
-            repository.updateTask(updated)
+            val updatedTask = task.copy(isDone = !task.isDone)
+            repository.updateTask(updatedTask)
+            // ❌ 不直接改 _uiTasks，資料將自 Room 更新回來，自然會觸發動畫
         }
     }
 
-    // ✅ 刪除任務
     fun deleteTask(task: TaskEntity) {
         viewModelScope.launch {
             repository.deleteTask(task)
+        }
+    }
+
+    private val _playSoundEvent = MutableSharedFlow<Unit>()
+    val playSoundEvent = _playSoundEvent.asSharedFlow()
+
+    fun triggerSound() {
+        viewModelScope.launch {
+            _playSoundEvent.emit(Unit)
         }
     }
 }
