@@ -62,4 +62,18 @@ interface TaskDao {
      */
     @Query("DELETE FROM tasks WHERE id = :id")
     suspend fun deleteTaskById(id: Int)
+
+    // TaskDao.kt
+    @Query("UPDATE tasks SET isDone = 0 WHERE repeatDaily = 1")
+    suspend fun resetRepeatDailyTasks()
+
+    @Query("UPDATE tasks SET repeatDaily = 1 WHERE id = :taskId")
+    suspend fun markTaskAsRepeat(taskId: Int)
+
+    @Query("UPDATE tasks SET repeatDaily = :repeat WHERE id = :taskId")
+    suspend fun updateRepeatFlag(taskId: Int, repeat: Boolean)
+
+    @Query("SELECT * FROM tasks WHERE repeatDaily = 1 AND isDone = 0")
+    suspend fun getIncompleteRepeatTasks(): List<TaskEntity>
+
 }

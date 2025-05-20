@@ -107,4 +107,10 @@ class FocusTimerViewModel @Inject constructor(private val repository: ITaskRepos
             _playSoundEvent.emit(Unit)
         }
     }
+
+    fun updateRepeatFlag(taskId: Int, repeat: Boolean) {
+        viewModelScope.launch {
+            repository.updateRepeatFlag(taskId, repeat)
+        }
+    }
 }

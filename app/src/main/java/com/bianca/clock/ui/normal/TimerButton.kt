@@ -10,8 +10,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.bianca.clock.ui.theme.WorkClockTheme
 
 @ExperimentalMaterial3Api
 @Composable
@@ -43,6 +45,22 @@ fun TimerButton(
             color = if (enabled) textColor else containerColor,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@ExperimentalMaterial3Api
+@Composable
+@Preview
+fun TimerButtonPreview() {
+    WorkClockTheme {
+        TimerButton(
+            label = "開始",
+            onClick = {},
+            enabled = false,
+            containerColor = Color(0xFF6200EE),
+            disabledContainerColor = Color(0xFFBB86FC),
+            textColor = Color.White
         )
     }
 }
