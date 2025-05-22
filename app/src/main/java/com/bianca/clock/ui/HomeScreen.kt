@@ -120,7 +120,7 @@ fun HomeScreen(viewModel: FocusTimerViewModel = hiltViewModel()) {
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text("FocusFlow", color = MaterialTheme.colorScheme.onBackground) },
+                title = { Text("", color = MaterialTheme.colorScheme.onBackground) },
                 actions = {
                     IconButton(onClick = {
                         Log.d("HomeScreen", "Add task button clicked")
@@ -293,13 +293,7 @@ fun HomeScreen(viewModel: FocusTimerViewModel = hiltViewModel()) {
                     }
                 }
             }
-
             Spacer(modifier = Modifier.height(24.dp))
-            Image(
-                painter = painterResource(id = R.drawable.ic_flower_smile),
-                contentDescription = "可愛花朵",
-                modifier = Modifier.size(80.dp)
-            )
         }
     }
 

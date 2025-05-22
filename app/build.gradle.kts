@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree.Companion.test
 
 plugins {
     alias(libs.plugins.android.application)
@@ -12,6 +13,7 @@ plugins {
     id("com.google.firebase.crashlytics") version "3.0.3" apply false
     kotlin("kapt")
 }
+
 
 hilt {
     enableAggregatingTask = false
@@ -67,6 +69,7 @@ android {
         buildConfig = true
     }
 }
+
 
 dependencies {
 
@@ -151,14 +154,29 @@ dependencies {
 
     implementation(libs.androidx.material.icons.extended)
 
-    implementation("androidx.compose.ui:ui-text-google-fonts:1.8.1")
+    implementation(libs.androidx.ui.text.google.fonts)
 
-    implementation("io.coil-kt:coil-compose:2.4.0")
-    implementation("io.coil-kt:coil-gif:2.4.0")
+    implementation(libs.coil.compose)
+    implementation(libs.coil.gif)
 
 
-    implementation("androidx.work:work-runtime-ktx:2.10.1")
-    implementation("androidx.hilt:hilt-work:1.2.0") // Hilt 注入 Worker 用
-    kapt("androidx.hilt:hilt-compiler:1.2.0")
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.hilt.work) // Hilt 注入 Worker 用
+    kapt(libs.androidx.hilt.compiler)
 
+    testImplementation(libs.mockk)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(kotlin("test"))
+
+
+    testImplementation(libs.turbine)
+
+
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.2")
+
+}
+
+tasks.withType<Test> {
+    useJUnitPlatform()
 }
