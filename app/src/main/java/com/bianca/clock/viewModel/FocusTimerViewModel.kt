@@ -8,16 +8,21 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 
 @HiltViewModel
 class FocusTimerViewModel @Inject constructor(private val repository: ITaskRepository) :
     ViewModel() {
 
-    private var _timeDefault = (1 * 2) // 2 秒，測試用
+    private var _timeDefault = MutableStateFlow(25 * 60) // 2 秒，測試用
+    val timeDefault: StateFlow<Int>
+        get() = _timeDefault
 
-    private val _timeLeft = MutableStateFlow(_timeDefault)
+    private var _timeLeft = MutableStateFlow(_timeDefault.value)
     val timeLeft: StateFlow<Int> = _timeLeft
 
     private var timerJob: Job? = null
@@ -43,7 +48,7 @@ class FocusTimerViewModel @Inject constructor(private val repository: ITaskRepos
         if (isRunning.value) return
         isRunning.value = true
         if (_timeLeft.value <= 0)
-            _timeLeft.value = _timeDefault
+            _timeLeft.value = _timeDefault.value
         timerJob = viewModelScope.launch {
             while (_timeLeft.value > 0) {
                 delay(1000)
@@ -62,7 +67,7 @@ class FocusTimerViewModel @Inject constructor(private val repository: ITaskRepos
 
     fun resetTimer() {
         timerJob?.cancel()
-        _timeLeft.value = _timeDefault
+        _timeLeft.value = _timeDefault.value
         isRunning.value = false
     }
 
@@ -112,5 +117,11 @@ class FocusTimerViewModel @Inject constructor(private val repository: ITaskRepos
         viewModelScope.launch {
             repository.updateRepeatFlag(taskId, repeat)
         }
+    }
+
+
+    fun setTimerLength(minutes: Int) {
+        _timeDefault.value = minutes * 60
+        _timeLeft.value = minutes * 60
     }
 }

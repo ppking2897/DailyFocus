@@ -1,10 +1,7 @@
 package com.bianca.clock.ui
 
-import android.content.Context
 import android.content.res.Configuration
-import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,24 +29,31 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.bianca.clock.ui.theme.WorkClockTheme
 
 // 8️⃣ AddTaskDialog 加入每日重複開關與調整按鈕背景色
+
+object TAG_LIST {
+    val tagOptions = listOf("未分類", "閱讀", "工作", "運動", "放鬆")
+}
+
 @Composable
 fun AddTaskDialog(
     showDialog: Boolean,
     onDismiss: () -> Unit,
     onConfirm: (name: String, tag: String, repeat: Boolean) -> Unit,
 ) {
+
+
+
+
     if (!showDialog) return
 
     var taskName by remember { mutableStateOf("") }
@@ -57,7 +61,7 @@ fun AddTaskDialog(
     var selectedTag by remember { mutableStateOf("未分類") }
     var isRepeatDaily by remember { mutableStateOf(false) }
 
-    val tagOptions = listOf("未分類", "閱讀", "工作", "運動", "放鬆")
+
     val context = LocalContext.current
 
     AlertDialog(
@@ -96,7 +100,7 @@ fun AddTaskDialog(
                         expanded = expanded,
                         onDismissRequest = { expanded = false }
                     ) {
-                        tagOptions.forEach { tag ->
+                        TAG_LIST.tagOptions.forEach { tag ->
                             DropdownMenuItem(
                                 text = {
                                     Text(
@@ -134,7 +138,7 @@ fun AddTaskDialog(
                 onClick = {
                     if (taskName.isNotBlank()) {
                         onConfirm(taskName.trim(), selectedTag, isRepeatDaily)
-                    }else{
+                    } else {
                         Toast.makeText(context, "請至少輸入一個字", Toast.LENGTH_SHORT).show()
                     }
                     onDismiss()

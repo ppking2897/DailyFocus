@@ -62,7 +62,7 @@ class MainActivity : ComponentActivity() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 requiredPermissions.add(Manifest.permission.POST_NOTIFICATIONS)
             }
-            requiredPermissions.add(Manifest.permission.CAMERA)
+//            requiredPermissions.add(Manifest.permission.CAMERA)
 
             if (isShowSettingOperationDialog) {
                 CameraPermissionRationaleDialog(){

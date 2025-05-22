@@ -3,8 +3,10 @@ package com.bianca.clock.ui
 import android.media.MediaPlayer
 import android.util.Log
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,11 +20,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -52,27 +56,44 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.bianca.clock.R
 import com.bianca.clock.infrastructure.room.TaskEntity
+import com.bianca.clock.ui.normal.ColoredFilterChip
+import com.bianca.clock.ui.normal.ImmersiveTimePickerDialog
 import com.bianca.clock.ui.normal.TimerButton
+import com.bianca.clock.ui.normal.TimerLengthSelector
+import com.bianca.clock.ui.normal.tagColor
+import com.bianca.clock.ui.normal.taskTagStripe
 import com.bianca.clock.viewModel.FocusTimerViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(viewModel: FocusTimerViewModel = hiltViewModel()) {
     val time by viewModel.timeLeft.collectAsState()
+    val timeInit by viewModel.timeDefault.collectAsState()
     val isRunning by viewModel.isRunning.collectAsState()
+    val intTimeMinutes = timeInit / 60
     val formattedTime = String.format("%02d:%02d", time / 60, time % 60)
     var showDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
+    var showTimePicker by remember { mutableStateOf(false) }
+
     val tasks by viewModel.uiTasks.collectAsState()
     Log.d("HomeScreen", "Total tasks: ${'$'}{tasks.size}")
-    val (incomplete, complete) = remember(tasks) {
-        val sorted = tasks.sortedByDescending { it.timestamp }
-        sorted.partition { !it.isDone }
-    }
+
+    var currentTag by remember { mutableStateOf("") }
 
     val listState = rememberLazyListState()
+
+    val (incomplete, complete) = remember(tasks , currentTag) {
+        val filtered = if (currentTag.isNotEmpty()) {
+            tasks.filter { it.tag == currentTag }
+        } else {
+            tasks
+        }
+        val sorted = filtered.sortedByDescending { it.timestamp }
+        sorted.partition { !it.isDone }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.playSoundEvent.collect {
@@ -127,6 +148,26 @@ fun HomeScreen(viewModel: FocusTimerViewModel = hiltViewModel()) {
                 .statusBarsPadding(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // 1. 新增時間長度選擇器
+            Button(
+                onClick = { showTimePicker = true },
+                modifier = Modifier.padding(top = 8.dp)
+            ) {
+                Text("設定倒數時間${intTimeMinutes} 分鐘")
+            }
+
+            ImmersiveTimePickerDialog (
+                show = showTimePicker,
+                initialMinutes = intTimeMinutes,
+                onDismiss = { showTimePicker = false },
+                onConfirm = {
+                    viewModel.setTimerLength(it)
+                    showTimePicker = false
+                }
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // 2. 時間顯示
             TimerDisplay(time = formattedTime)
             Spacer(modifier = Modifier.height(10.dp))
             Row(
@@ -177,6 +218,24 @@ fun HomeScreen(viewModel: FocusTimerViewModel = hiltViewModel()) {
 //            QuoteBanner(quote = "保持微笑，專注就會自然發生。")
 //            Spacer(modifier = Modifier.height(16.dp))
 
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                item {
+                    ColoredFilterChip(
+                        label = "全部",
+                        selected = currentTag.isEmpty(),
+                        onClick = { currentTag = "" }
+                    )
+                }
+
+                items(TAG_LIST.tagOptions){ tag ->
+                    ColoredFilterChip(
+                        label = tag,
+                        selected = currentTag == tag,
+                        onClick = { currentTag = tag }
+                    )
+                }
+
+            }
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -259,6 +318,7 @@ fun HomeScreen(viewModel: FocusTimerViewModel = hiltViewModel()) {
 fun TaskItemRow(task: TaskEntity, viewModel: FocusTimerViewModel, checkBoxAction: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
+        border = BorderStroke(1.dp , tagColor(task.tag)),
         shape = MaterialTheme.shapes.medium,
         tonalElevation = 2.dp,
         shadowElevation = 2.dp,
@@ -320,14 +380,14 @@ fun TaskItemRow(task: TaskEntity, viewModel: FocusTimerViewModel, checkBoxAction
                     Text(
                         text = "#${task.tag}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = tagColor(task.tag)
                     )
                 }
                 if (task.repeatDaily) {
                     Text(
                         text = "#重複任務",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = tagColor("每日重複") // ✅ 使用對應色
                     )
                 }
             }
